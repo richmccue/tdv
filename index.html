@@ -6,8 +6,9 @@
 <title>Tour de Victoria 2026 — Training Tracker</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #f9f9f7; color: #1a1a18; min-height: 100vh; padding: 2rem 1rem; }
-  .container { max-width: 720px; margin: 0 auto; }
+  .container { max-width: 720px; margin: 0 auto; width: 100%; }
   input, select, textarea, button { font-family: inherit; font-size: 14px; border-radius: 8px; border: 0.5px solid #ccc; padding: 8px 10px; outline: none; }
   input:focus, select:focus, textarea:focus { border-color: #639922; box-shadow: 0 0 0 2px rgba(99,153,34,0.15); }
   button { cursor: pointer; }
@@ -155,10 +156,19 @@
   .sticky-header.scrolled { border-bottom-color: #ddd; }
   #section-plan { padding-top: 0.75rem; }
 
-  @media (max-width: 500px) {
+  @media (max-width: 600px) {
     .form-row { grid-template-columns: 1fr; }
-    .ride-log-header, .ride-row { grid-template-columns: 70px 1fr 60px 0 50px 60px; font-size: 11px; }
-    .ride-log-header span:nth-child(4), .ride-row span:nth-child(4) { display: none; }
+    .ride-log-header, .ride-row { grid-template-columns: 65px 1fr 55px 50px; gap: 4px; font-size: 11px; padding: 8px 10px; }
+    .ride-log-header span:nth-child(4), .ride-row span:nth-child(4),
+    .ride-log-header span:nth-child(5), .ride-row span:nth-child(5) { display: none; }
+    .week-days { grid-template-columns: 24px repeat(7, 1fr); gap: 2px; }
+    .day-pill { font-size: 9px; padding: 3px 1px; }
+    .day-row-label { font-size: 8px; }
+    .week-card { padding: 0.75rem 0.875rem; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .nav button { font-size: 12px; padding: 5px 10px; }
+    body { padding: 1rem 0.75rem; }
+    .sticky-header { padding-top: 1rem; margin-top: -1rem; }
   }
 </style>
 </head>
