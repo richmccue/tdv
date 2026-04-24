@@ -1,14 +1,6 @@
 {
   "rides": [
     {
-      "date": "2026-04-22",
-      "km": 41,
-      "elev": 180,
-      "effort": 3,
-      "notes": "Rouvey training bike ride.",
-      "id": 1777057664672
-    },
-    {
       "date": "2026-04-13",
       "km": 13,
       "elev": 120,
@@ -47,6 +39,14 @@
       "effort": 3,
       "notes": "",
       "id": 1777058972838
+    },
+    {
+      "date": "2026-04-22",
+      "km": 33,
+      "elev": 0,
+      "effort": 3,
+      "notes": "",
+      "id": 1777059216802
     }
   ],
   "planEdits": {
