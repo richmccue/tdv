@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tour de Victoria 2026 — Training Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f9f9f7; color: #1a1a18; min-height: 100vh; padding: 2rem 1rem; }
+  .container { max-width: 720px; margin: 0 auto; }
+  input, select, textarea, button { font-family: inherit; font-size: 14px; border-radius: 8px; border: 0.5px solid #ccc; padding: 8px 10px; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #639922; box-shadow: 0 0 0 2px rgba(99,153,34,0.15); }
+  button { cursor: pointer; }
+
+  /* ── Auth / Setup overlays ── */
+  .overlay { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:2rem 1rem; }
+  .auth-card { background:#fff; border:0.5px solid #ddd; border-radius:16px; padding:2rem; width:100%; max-width:400px; }
+  .auth-card h2 { font-size:18px; font-weight:500; margin-bottom:4px; }
+  .auth-card p { font-size:13px; color:#888; margin-bottom:1.5rem; line-height:1.5; }
+  .auth-card label { display:block; font-size:12px; color:#666; margin-bottom:4px; margin-top:12px; }
+  .auth-card input { width:100%; }
+  .auth-card .btn-go { width:100%; margin-top:1rem; padding:10px; background:#3B6D11; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:500; }
+  .auth-card .btn-go:hover { background:#27500A; }
+  .auth-card .err { color:#A32D2D; font-size:12px; margin-top:8px; display:none; }
+  .auth-card .err.show { display:block; }
+  .auth-card details { margin-top:1rem; font-size:12px; color:#888; }
+  .auth-card details summary { cursor:pointer; color:#185FA5; }
+  .auth-card details p { margin-top:6px; margin-bottom:0; }
+  .auth-card details ol { margin-top:4px; padding-left:1.2rem; line-height:1.8; }
+  .auth-card details a { color:#185FA5; }
+
+  /* ── Sync status bar ── */
+  .sync-bar { font-size:11px; color:#aaa; text-align:right; margin-bottom:0.5rem; min-height:16px; }
+  .sync-bar.saving { color:#BA7517; }
+  .sync-bar.saved  { color:#639922; }
+  .sync-bar.error  { color:#A32D2D; }
+
+  /* ── Nav ── */
+  .nav { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .nav button { font-size: 13px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid #bbb; background: transparent; color: #666; transition: all 0.15s; }
+  .nav button.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+  .nav button:hover:not(.active) { background: #f0f0ee; }
+
+  .section { display: none; }
+  .section.visible { display: block; }
+
+  /* ── Stats ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .stat { background: #f0f0ee; border-radius: 8px; padding: 12px 14px; }
+  .stat-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 500; }
+  .stat-sub { font-size: 11px; color: #999; margin-top: 2px; }
+
+  /* ── Week cards ── */
+  .week-card { border: 0.5px solid #ddd; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 10px; background: #fff; }
+  .week-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .week-title { font-weight: 500; font-size: 14px; }
+  .week-dates { font-size: 12px; color: #888; }
+  .week-progress { height: 6px; border-radius: 3px; background: #eee; overflow: hidden; margin-bottom: 8px; }
+  .week-progress-fill { height: 100%; border-radius: 3px; background: #3B6D11; transition: width 0.4s; }
+  .week-progress-fill.over { background: #185FA5; }
+  .week-km { font-size: 12px; color: #888; display: flex; justify-content: space-between; }
+  .week-km strong { color: #1a1a18; font-weight: 500; }
+  .week-days { display: grid; grid-template-columns: 28px repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+  .day-pill { text-align: center; font-size: 10px; padding: 4px 2px; border-radius: 4px; }
+  .day-row-label { font-size: 9px; font-weight: 500; color: #999; background: transparent; display: flex; align-items: center; justify-content: flex-end; padding-right: 2px; }
+  .day-actual { background: #e8f4d4; color: #3B6D11; font-weight: 500; }
+  .day-actual-empty { background: transparent; }
+  .day-pill.ride { background: #EAF3DE; color: #27500A; }
+  .day-pill.ride.editable { cursor: pointer; text-decoration: underline dotted #639922; }
+  .day-pill.ride.editable:hover { background: #C0DD97; }
+  .day-pill.rest { background: #f0f0ee; color: #aaa; }
+  .day-pill.rest.editable { cursor: pointer; text-decoration: underline dotted #aaa; }
+  .day-pill.rest.editable:hover { background: #e0e0de; }
+  .day-pill.core { background: #E6F1FB; color: #0C447C; }
+  .day-pill.core.editable { cursor: pointer; text-decoration: underline dotted #185FA5; }
+  .day-pill.core.editable:hover { background: #B5D4F4; }
+  .day-pill.soccer { background: #FAEEDA; color: #633806; }
+  .day-pill.soccer.editable { cursor: pointer; text-decoration: underline dotted #BA7517; }
+  .day-pill.soccer.editable:hover { background: #FAC775; }
+  .day-pill.day-label { font-weight: 500; font-size: 9px; color: #999; background: transparent; }
+  .day-pill.editing { padding: 0; background: transparent; }
+  .day-pill.editing input { width: 100%; font-size: 10px; padding: 3px 2px; text-align: center; border-radius: 4px; border: 1.5px solid #639922; background: #fff; color: #1a1a18; outline: none; }
+
+  /* ── Day popup ── */
+  .pill-popup { position: absolute; z-index: 100; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 4px; min-width: 90px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .pill-popup button { font-size: 11px; padding: 5px 8px; border-radius: 6px; border: 0.5px solid #ddd; background: #f9f9f7; color: #1a1a18; text-align: left; cursor: pointer; }
+  .pill-popup button:hover { background: #f0f0ee; }
+  .pill-popup button.opt-ride { background: #EAF3DE; color: #27500A; border-color: #C0DD97; }
+  .pill-popup button.opt-ride:hover { background: #C0DD97; }
+  .pill-popup button.opt-core { background: #E6F1FB; color: #0C447C; border-color: #B5D4F4; }
+  .pill-popup button.opt-core:hover { background: #B5D4F4; }
+  .pill-popup button.opt-soccer { background: #FAEEDA; color: #633806; border-color: #FAC775; }
+  .pill-popup button.opt-soccer:hover { background: #FAC775; }
+  .pill-popup button.opt-rest { background: #f0f0ee; color: #888; border-color: #ddd; }
+  .pill-popup button.opt-rest:hover { background: #e0e0de; }
+  .pill-popup .km-row { display: flex; gap: 4px; align-items: center; }
+  .pill-popup .km-row input { flex: 1; font-size: 11px; padding: 4px 6px; border-radius: 6px; border: 1.5px solid #639922; outline: none; min-width: 0; }
+  .pill-popup .km-row button { padding: 4px 8px; font-size: 11px; background: #3B6D11; color: #fff; border: none; border-radius: 6px; }
+  .pill-popup .km-row button:hover { background: #27500A; }
+
+  /* ── Badge ── */
+  .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+  .badge-current { background: #EAF3DE; color: #27500A; }
+  .badge-done { background: #f0f0ee; color: #999; }
+
+  /* ── Log form ── */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; }
+  .form-group textarea { height: 80px; resize: vertical; }
+  .btn-primary { width: 100%; padding: 10px; background: #1a1a18; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; margin-top: 4px; }
+  .btn-primary:hover { opacity: 0.85; }
+  .form-card { border: 0.5px solid #ddd; border-radius: 12px; padding: 1.25rem; background: #fff; }
+
+  /* ── Rides log ── */
+  .ride-log { border: 0.5px solid #ddd; border-radius: 12px; overflow: hidden; }
+  .ride-log-header { display: grid; grid-template-columns: 80px 1fr 70px 80px 55px 70px; gap: 8px; padding: 8px 14px; background: #f5f5f3; font-size: 11px; color: #888; font-weight: 500; }
+  .ride-row { display: grid; grid-template-columns: 80px 1fr 70px 80px 55px 70px; gap: 8px; padding: 10px 14px; border-top: 0.5px solid #eee; font-size: 13px; align-items: center; }
+  .effort-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .effort-1, .effort-2 { background: #639922; }
+  .effort-3 { background: #BA7517; }
+  .effort-4, .effort-5 { background: #A32D2D; }
+  .edit-btn { font-size: 11px; color: #185FA5; background: none; border: 0.5px solid #185FA5; cursor: pointer; padding: 2px 8px; border-radius: 4px; }
+  .edit-btn:hover { background: #E6F1FB; }
+  .save-btn { font-size: 11px; color: #27500A; background: none; border: 0.5px solid #639922; cursor: pointer; padding: 2px 8px; border-radius: 4px; }
+  .save-btn:hover { background: #EAF3DE; }
+  .delete-btn { font-size: 11px; color: #bbb; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .delete-btn:hover { color: #A32D2D; background: #FCEBEB; }
+  .empty-state { text-align: center; padding: 2rem; color: #bbb; font-size: 13px; }
+
+  /* ── Routes ── */
+  .route-card { border: 0.5px solid #ddd; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; background: #fff; }
+  .route-km { font-size: 18px; font-weight: 500; min-width: 52px; }
+  .route-info { flex: 1; }
+  .route-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .route-meta { font-size: 11px; color: #888; }
+  .route-link { font-size: 11px; color: #185FA5; text-decoration: none; padding: 4px 10px; border: 0.5px solid #185FA5; border-radius: 12px; white-space: nowrap; }
+  .route-link:hover { background: #E6F1FB; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+  .filter-row label { font-size: 12px; color: #888; }
+  .filter-row select { width: auto; }
+
+  /* ── Misc ── */
+  .countdown { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
+  .countdown strong { font-size: 20px; color: #1a1a18; font-weight: 500; }
+  .section-title { font-size: 13px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; margin-top: 1.5rem; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; margin-bottom: 1.5rem; }
+  .legend { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; color: #888; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .edit-hint { font-size: 11px; color: #aaa; margin-top: 6px; }
+  .sticky-header { position: sticky; top: 0; z-index: 10; background: #f9f9f7; padding-top: 2rem; margin-top: -2rem; padding-bottom: 0.5rem; border-bottom: 0.5px solid transparent; transition: border-color 0.2s; }
+  .sticky-header.scrolled { border-bottom-color: #ddd; }
+  #section-plan { padding-top: 0.75rem; }
+
+  @media (max-width: 500px) {
+    .form-row { grid-template-columns: 1fr; }
+    .ride-log-header, .ride-row { grid-template-columns: 70px 1fr 60px 0 50px 60px; font-size: 11px; }
+    .ride-log-header span:nth-child(4), .ride-row span:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── PASSWORD GATE ── -->
+<div class="overlay" id="gate-pw">
+  <div class="auth-card">
+    <h2>Tour de Victoria 2026</h2>
+    <p>Enter the app password to continue.</p>
+    <label>Password</label>
+    <input type="password" id="pw-input" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="pw-err">Incorrect password.</div>
+    <button class="btn-go" onclick="checkPassword()">Continue</button>
+  </div>
+</div>
+
+<!-- ── GITHUB SETUP (first time per device) ── -->
+<div class="overlay" id="gate-setup" style="display:none;">
+  <div class="auth-card">
+    <h2>Connect to GitHub</h2>
+    <p>Your data is stored in a file in your GitHub repo. Enter your details once — they are saved on this device only.</p>
+    <label>GitHub username</label>
+    <input type="text" id="setup-user" placeholder="e.g. richmccue">
+    <label>Repository name</label>
+    <input type="text" id="setup-repo" placeholder="e.g. learning-games">
+    <label>Branch</label>
+    <input type="text" id="setup-branch" value="main" placeholder="main">
+    <label>Personal Access Token (PAT)</label>
+    <input type="password" id="setup-token" placeholder="ghp_...">
+    <div class="err" id="setup-err">Could not connect. Check your details and token permissions.</div>
+    <button class="btn-go" onclick="setupGitHub()">Connect &amp; Load data</button>
+    <details>
+      <summary>How to create a Personal Access Token</summary>
+      <ol>
+        <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a></li>
+        <li>Give it a name like "TdV Tracker"</li>
+        <li>Set expiration to 1 year</li>
+        <li>Under <strong>Scopes</strong>, check <strong>repo</strong></li>
+        <li>Click <strong>Generate token</strong> and paste it above</li>
+      </ol>
+      <p>The token is stored only in this browser's localStorage, never sent anywhere except GitHub's API.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div class="container" id="app" style="display:none;">
+  <div class="sticky-header" id="sticky-header">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;">
+      <span style="font-size:20px;font-weight:500;">Tour de Victoria 2026</span>
+      <span style="font-size:13px;color:#888;">140 km &middot; Aug 10, 2026</span>
+    </div>
+    <div class="countdown" id="countdown"></div>
+    <div class="nav">
+      <button class="active" onclick="showSection('dashboard')">Dashboard</button>
+      <button onclick="showSection('plan')">Training plan</button>
+      <button onclick="showSection('log')">Log a ride</button>
+      <button onclick="showSection('rides')">My rides</button>
+      <button onclick="showSection('routes')">Route library</button>
+    </div>
+  </div>
+
+  <div class="sync-bar" id="sync-bar"></div>
+
+  <div class="section visible" id="section-dashboard">
+    <div class="stat-grid" id="dash-stats"></div>
+    <div class="section-title">Km per week vs plan</div>
+    <div class="chart-wrap"><canvas id="progressChart" role="img" aria-label="Bar chart comparing weekly planned vs actual kilometres"></canvas></div>
+    <div id="dash-current-week"></div>
+  </div>
+
+  <div class="section" id="section-plan">
+    <div id="plan-weeks"></div>
+  </div>
+
+  <div class="section" id="section-log">
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input type="date" id="ride-date"></div>
+        <div class="form-group"><label>Distance (km)</label><input type="number" id="ride-km" placeholder="0" min="0" step="0.1"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Elevation gain (m)</label><input type="number" id="ride-elev" placeholder="0" min="0"></div>
+        <div class="form-group"><label>Perceived effort (1-5)</label>
+          <select id="ride-effort">
+            <option value="1">1 &mdash; Very easy</option>
+            <option value="2">2 &mdash; Easy</option>
+            <option value="3" selected>3 &mdash; Moderate</option>
+            <option value="4">4 &mdash; Hard</option>
+            <option value="5">5 &mdash; All out</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>Route / notes</label><textarea id="ride-notes" placeholder="Which route did you take? How did it feel?"></textarea></div>
+      </div>
+      <button class="btn-primary" onclick="logRide()">Save ride</button>
+    </div>
+  </div>
+
+  <div class="section" id="section-rides">
+    <div id="rides-container"></div>
+  </div>
+
+  <div class="section" id="section-routes">
+    <div class="filter-row">
+      <label>Max km:</label>
+      <select id="route-filter" onchange="renderRoutes()">
+        <option value="999">All distances</option>
+        <option value="30">Up to 30 km</option>
+        <option value="50">Up to 50 km</option>
+        <option value="75">Up to 75 km</option>
+        <option value="100">Up to 100 km</option>
+      </select>
+    </div>
+    <div id="routes-container"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ─────────────────────────────────────────────
+// CONFIGURATION — edit these two values
+// ─────────────────────────────────────────────
+const APP_PASSWORD_HASH = '820d64fbedbbf6b11872858fba1d07d552d631cc0717c2aa834795a47e5a9f81'; // SHA-256 of your password
+const DATA_FILE_PATH = 'tdv-data.json';  // path inside your repo where data is stored
+// ─────────────────────────────────────────────
+
+const RACE_DATE  = new Date('2026-08-10');
+const WEEK1_START = '2026-04-05';
+const DAY_LABELS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+// ── Date helpers (all UTC to avoid timezone shifts) ──
+function addDays(dateStr, n) {
+  const [y, m, day] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, day + n)).toISOString().split('T')[0];
+}
+function parseUTC(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+function todayUTC() {
+  const n = new Date();
+  return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
+}
+
+// ── Training plan (base data, edits overlaid from remote) ──
+const PLAN_BASE = [
+  ['22','Core','Rest','Rest','Core','25','Core'],
+  ['Rest','22','Core','24','Core','30','Core'],
+  ['Soccer','Rest','41','Rest','Core','34','Core'],
+  ['Soccer','Rest','30','Rest','Rest','41','Rest'],
+  ['Soccer','Rest','30','Rest','Core','46','Core'],
+  ['Soccer','Rest','30','Rest','Core','48','Rest'],
+  ['Soccer','Rest','30','Rest','Core','52','Rest'],
+  ['Soccer','Rest','30','Rest','Core','54','Rest'],
+  ['Soccer','Rest','30','Rest','57','Rest','Rest'],
+  ['Soccer','Rest','30','Rest','Core','66','Rest'],
+  ['Soccer','Rest','30','Rest','Core','73','Core'],
+  ['Soccer','Rest','30','Rest','Core','75','Core'],
+  ['Soccer','Rest','30','Rest','Core','84','Rest'],
+  ['Soccer','Rest','30','Rest','Core','94','Rest'],
+  ['Soccer','Rest','30','Rest','Core','96','Rest'],
+  ['Soccer','Rest','30','Rest','Core','106','Rest'],
+  ['30','Rest','30','Rest','Core','122','Rest'],
+  ['30','Rest','30','Rest','Core','50','Rest'],
+  ['rest','24','Rest','22','Rest','138','Rest'],
+];
+
+let planEdits = {};
+let rides = [];
+
+function buildPlan() {
+  return PLAN_BASE.map((days, i) => ({
+    week: i + 1,
+    startDate: addDays(WEEK1_START, i * 7),
+    days: days.map((d, j) => planEdits[`${i}-${j}`] !== undefined ? planEdits[`${i}-${j}`] : d),
+    get totalKm() {
+      return this.days.reduce((s, d) => { const v = parseFloat(d); return s + (isNaN(v) ? 0 : v); }, 0);
+    }
+  }));
+}
+let PLAN = buildPlan();
+
+const ROUTES = [
+  { km: 22, elev: 199, name: 'Interurban & Back - short', url: 'https://www.strava.com/routes/3350496036170754444' },
+  { km: 24, elev: 162, name: 'Lockside out and back - short', url: 'https://www.strava.com/routes/3343298158301024660' },
+  { km: 24, elev: 234, name: 'Interurban & Back', url: 'https://www.strava.com/routes/3367292446809917622' },
+  { km: 30, elev: 274, name: 'Caddy Bay & PKOLS Figure 8 Loop', url: 'https://www.strava.com/routes/3276695157912314022' },
+  { km: 34, elev: 322, name: 'Caddy Bay - Goose - Interurban', url: 'https://www.strava.com/routes/3396193431475233454' },
+  { km: 34, elev: 267, name: 'Waterfront short', url: 'https://www.strava.com/routes/3482419148848299564' },
+  { km: 41, elev: 323, name: 'Waterfront + Blekensop', url: 'https://www.strava.com/routes/3350226145176969504' },
+  { km: 48, elev: 423, name: 'Waterfront + Interurban', url: 'https://www.strava.com/routes/3246937785056665268' },
+  { km: 45, elev: 475, name: 'Arbutus + Elk Lake + Mt. Doug loop', url: 'https://www.strava.com/routes/3277694797752341784' },
+  { km: 50, elev: 770, name: 'Munn & back', url: 'https://www.strava.com/routes/3277690144315380648' },
+  { km: 52, elev: 413, name: 'To the Airport & Back', url: 'https://www.strava.com/routes/3394032436682143110' },
+  { km: 53, elev: 496, name: 'Waterfront + Elk Lake', url: 'https://www.strava.com/routes/3343298652784719344' },
+  { km: 54, elev: 540, name: 'Waterfront & Colwood & Interurban', url: 'https://www.strava.com/routes/3354523295612934352' },
+  { km: 57, elev: 629, name: 'Waterfront & Elk Lake', url: 'https://www.strava.com/routes/3358589311234418972' },
+  { km: 59, elev: 463, name: 'Airport Loop', url: 'https://www.strava.com/routes/3410664349966154346' },
+  { km: 59, elev: 922, name: 'Tolmie, Munn Hill & Back', url: 'https://www.strava.com/routes/3371278012330037550' },
+  { km: 62, elev: 575, name: 'Waterfront + Lagoon', url: 'https://www.strava.com/routes/3105256224269553932' },
+  { km: 67, elev: 654, name: 'Waterfront - Lagoon - Interurban', url: 'https://www.strava.com/routes/3367552147797493406' },
+  { km: 73, elev: 585, name: 'GH to ferry', url: 'https://www.strava.com/routes/3275125784930568658' },
+  { km: 75, elev: 557, name: 'GH to ferry +', url: 'https://www.strava.com/routes/3342570123258447890' },
+  { km: 84, elev: 876, name: 'Waterfront - Lagoon - Mitchosen+', url: 'https://www.strava.com/routes/3104853762329593456' },
+  { km: 94, elev: 988, name: 'GH - Munn Rd - BC Ferries', url: 'https://www.strava.com/routes/2984537894026465872' },
+  { km: 96, elev: 1152, name: 'Waterfront - Lagoon - Bear Mtn - Munn - Lochside', url: 'https://www.strava.com/routes/3102989933677189766' },
+  { km: 106, elev: 1434, name: 'Waterfront - Lagoon - Mitchosen - Munn', url: 'https://www.strava.com/routes/3117598083410902460' },
+  { km: 122, elev: 1484, name: 'Waterfront - Lagoon - Mitchosen - Munn - Peninsula', url: 'https://www.strava.com/routes/3342571983750243306' },
+];
+
+// ─────────────────────────────────────────────
+// GITHUB STORAGE
+// ─────────────────────────────────────────────
+let ghUser = '', ghRepo = '', ghBranch = 'main', ghToken = '', ghFileSha = null;
+
+function ghHeaders() {
+  return { 'Authorization': `token ${ghToken}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' };
+}
+
+function ghApiUrl() {
+  return `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${DATA_FILE_PATH}?ref=${ghBranch}`;
+}
+
+async function loadFromGitHub() {
+  const res = await fetch(ghApiUrl(), { headers: ghHeaders() });
+  if (res.status === 404) { ghFileSha = null; return null; }
+  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+  const json = await res.json();
+  ghFileSha = json.sha;
+  return JSON.parse(atob(json.content.replace(/\n/g, '')));
+}
+
+async function saveToGitHub() {
+  setSyncStatus('saving', 'Saving\u2026');
+  const data = { rides, planEdits };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const body = { message: `Update training data ${new Date().toISOString().split('T')[0]}`, content, branch: ghBranch };
+  if (ghFileSha) body.sha = ghFileSha;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${DATA_FILE_PATH}`, {
+      method: 'PUT', headers: ghHeaders(), body: JSON.stringify(body)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || res.status); }
+    const json = await res.json();
+    ghFileSha = json.content.sha;
+    setSyncStatus('saved', 'Saved to GitHub');
+    setTimeout(() => setSyncStatus('', ''), 3000);
+  } catch(e) {
+    setSyncStatus('error', 'Save failed: ' + e.message);
+  }
+}
+
+function setSyncStatus(cls, msg) {
+  const bar = document.getElementById('sync-bar');
+  bar.className = 'sync-bar' + (cls ? ' ' + cls : '');
+  bar.textContent = msg;
+}
+
+// ─────────────────────────────────────────────
+// AUTH FLOW
+// ─────────────────────────────────────────────
+async function hashString(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function checkPassword() {
+  const val = document.getElementById('pw-input').value;
+  const err = document.getElementById('pw-err');
+  const hash = await hashString(val);
+  if (hash === APP_PASSWORD_HASH) {
+    document.getElementById('gate-pw').style.display = 'none';
+    localStorage.setItem('tdv_authed', '1');
+    showSetupOrApp();
+  } else {
+    err.classList.add('show');
+    document.getElementById('pw-input').value = '';
+  }
+}
+
+document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
+
+function showSetupOrApp() {
+  ghUser   = localStorage.getItem('tdv_gh_user')   || '';
+  ghRepo   = localStorage.getItem('tdv_gh_repo')   || '';
+  ghBranch = localStorage.getItem('tdv_gh_branch') || 'main';
+  ghToken  = localStorage.getItem('tdv_gh_token')  || '';
+
+  if (ghUser && ghRepo && ghToken) {
+    launchApp();
+  } else {
+    document.getElementById('gate-setup').style.display = 'flex';
+  }
+}
+
+async function setupGitHub() {
+  ghUser   = document.getElementById('setup-user').value.trim();
+  ghRepo   = document.getElementById('setup-repo').value.trim();
+  ghBranch = document.getElementById('setup-branch').value.trim() || 'main';
+  ghToken  = document.getElementById('setup-token').value.trim();
+  const err = document.getElementById('setup-err');
+  err.classList.remove('show');
+
+  if (!ghUser || !ghRepo || !ghToken) { err.textContent = 'Please fill in all fields.'; err.classList.add('show'); return; }
+
+  try {
+    const data = await loadFromGitHub();
+    localStorage.setItem('tdv_gh_user',   ghUser);
+    localStorage.setItem('tdv_gh_repo',   ghRepo);
+    localStorage.setItem('tdv_gh_branch', ghBranch);
+    localStorage.setItem('tdv_gh_token',  ghToken);
+    if (data) { rides = data.rides || []; planEdits = data.planEdits || {}; }
+    document.getElementById('gate-setup').style.display = 'none';
+    launchApp();
+  } catch(e) {
+    err.textContent = 'Could not connect: ' + e.message;
+    err.classList.add('show');
+  }
+}
+
+async function launchApp() {
+  try {
+    const data = await loadFromGitHub();
+    if (data) { rides = data.rides || []; planEdits = data.planEdits || {}; }
+  } catch(e) {
+    setSyncStatus('error', 'Could not load from GitHub: ' + e.message);
+  }
+  PLAN = buildPlan();
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('ride-date').value = new Date().toISOString().split('T')[0];
+  updateCountdown();
+  renderDashboard();
+  window.addEventListener('scroll', () => {
+    const h = document.getElementById('sticky-header');
+    if (h) h.classList.toggle('scrolled', window.scrollY > 10);
+  });
+}
+
+// ─────────────────────────────────────────────
+// SAVE (GitHub + localStorage fallback)
+// ─────────────────────────────────────────────
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToGitHub(), 1500);
+}
+
+// ─────────────────────────────────────────────
+// APP LOGIC
+// ─────────────────────────────────────────────
+function getDayClass(val) {
+  const v = String(val).toLowerCase();
+  if (v === 'rest' || v === '') return 'rest';
+  if (v === 'core') return 'core';
+  if (v === 'soccer') return 'soccer';
+  if (!isNaN(parseFloat(v))) return 'ride';
+  return 'rest';
+}
+
+function getCurrentWeekIndex() {
+  const today = todayUTC();
+  for (let i = PLAN.length - 1; i >= 0; i--) {
+    if (parseUTC(PLAN[i].startDate) <= today) return i;
+  }
+  return 0;
+}
+
+function getWeekActualKm(weekIdx) {
+  const w = PLAN[weekIdx];
+  const start = parseUTC(w.startDate);
+  const end = new Date(start); end.setUTCDate(end.getUTCDate() + 7);
+  return rides.filter(r => { const d = parseUTC(r.date); return d >= start && d < end; })
+              .reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
+}
+
+function updateCountdown() {
+  const diff = Math.ceil((RACE_DATE - todayUTC()) / 86400000);
+  const el = document.getElementById('countdown');
+  if (diff > 0) el.innerHTML = `<strong>${diff}</strong> days to race day`;
+  else if (diff === 0) el.innerHTML = '<strong>Race day!</strong> Good luck!';
+  else el.innerHTML = `Race completed ${Math.abs(diff)} days ago`;
+}
+
+function formatWeekDates(startDate) {
+  const s = parseUTC(startDate);
+  const e = new Date(s); e.setUTCDate(e.getUTCDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return `${fmt(s)} \u2013 ${fmt(e)}`;
+}
+
+// ── Plan editing popup ──
+let activePopup = null;
+function closePopup() { if (activePopup) { activePopup.remove(); activePopup = null; } }
+
+function saveDay(weekIdx, dayIdx, val) {
+  planEdits[`${weekIdx}-${dayIdx}`] = String(val);
+  PLAN[weekIdx].days[dayIdx] = String(val);
+  renderPlan(); renderDashboard();
+  scheduleSave();
+}
+
+function startEditDay(weekIdx, dayIdx, currentVal, pillEl) {
+  closePopup();
+  const popup = document.createElement('div');
+  popup.className = 'pill-popup';
+  activePopup = popup;
+
+  const opts = [
+    { label: 'Ride (km)', cls: 'opt-ride', val: null },
+    { label: 'Core', cls: 'opt-core', val: 'Core' },
+    { label: 'Soccer', cls: 'opt-soccer', val: 'Soccer' },
+    { label: 'Rest', cls: 'opt-rest', val: 'Rest' },
+  ];
+
+  opts.forEach(opt => {
+    if (opt.val === null) {
+      const row = document.createElement('div'); row.className = 'km-row';
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.min = 0; inp.step = 0.1;
+      inp.value = !isNaN(parseFloat(currentVal)) ? currentVal : '';
+      inp.placeholder = 'km';
+      const btn = document.createElement('button'); btn.textContent = 'OK';
+      btn.onclick = e => { e.stopPropagation(); const p = parseFloat(inp.value); if (!isNaN(p)) { saveDay(weekIdx, dayIdx, p); closePopup(); } };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); btn.onclick(e); } if (e.key === 'Escape') { closePopup(); renderPlan(); } });
+      row.appendChild(inp); row.appendChild(btn); popup.appendChild(row);
+      setTimeout(() => inp.focus(), 0);
+    } else {
+      const b = document.createElement('button'); b.className = opt.cls; b.textContent = opt.label;
+      b.onclick = e => { e.stopPropagation(); saveDay(weekIdx, dayIdx, opt.val); closePopup(); };
+      popup.appendChild(b);
+    }
+  });
+
+  pillEl.style.position = 'relative';
+  pillEl.appendChild(popup);
+  setTimeout(() => {
+    document.addEventListener('click', function h(e) { if (!popup.contains(e.target)) { closePopup(); document.removeEventListener('click', h); } });
+  }, 0);
+}
+
+// ── Dashboard ──
+function renderDashboard() {
+  const totalLogged = rides.reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
+  const totalElev   = rides.reduce((s, r) => s + (parseInt(r.elev) || 0), 0);
+  const cwIdx = getCurrentWeekIndex();
+  const cwActual = getWeekActualKm(cwIdx);
+  const cwPlan   = PLAN[cwIdx].totalKm;
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Total km logged</div><div class="stat-value">${Math.round(totalLogged)}</div><div class="stat-sub">km ridden</div></div>
+    <div class="stat"><div class="stat-label">Total rides</div><div class="stat-value">${rides.length}</div><div class="stat-sub">sessions</div></div>
+    <div class="stat"><div class="stat-label">Elevation climbed</div><div class="stat-value">${totalElev.toLocaleString()}</div><div class="stat-sub">metres</div></div>
+    <div class="stat"><div class="stat-label">This week</div><div class="stat-value">${Math.round(cwActual)} <span style="font-size:13px;font-weight:400;color:#888">/ ${Math.round(cwPlan)}</span></div><div class="stat-sub">km vs plan</div></div>
+  `;
+
+  const weeksShown = PLAN.slice(0, cwIdx + 1);
+  if (window._progressChart) window._progressChart.destroy();
+  window._progressChart = new Chart(document.getElementById('progressChart'), {
+    type: 'bar',
+    data: {
+      labels: weeksShown.map((_, i) => `W${i + 1}`),
+      datasets: [
+        { label: 'Plan',   data: weeksShown.map(w => Math.round(w.totalKm)),         backgroundColor: 'rgba(99,153,34,0.18)', borderColor: '#639922', borderWidth: 1 },
+        { label: 'Actual', data: weeksShown.map((_, i) => Math.round(getWeekActualKm(i))), backgroundColor: '#3B6D11', borderRadius: 3 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { font: { size: 11 }, autoSkip: true, maxRotation: 0 } }, y: { ticks: { font: { size: 11 } } } } }
+  });
+
+  const cw = PLAN[cwIdx];
+  const pct = Math.min(100, Math.round((cwActual / cw.totalKm) * 100));
+  document.getElementById('dash-current-week').innerHTML = `
+    <div class="section-title">This week (week ${cwIdx + 1})</div>
+    <div class="week-card current-week">
+      <div class="week-header"><span class="week-title">Week ${cwIdx + 1} &middot; ${formatWeekDates(cw.startDate)}</span><span style="font-size:12px;color:#888">Goal: ${Math.round(cw.totalKm)} km</span></div>
+      <div class="week-progress"><div class="week-progress-fill ${cwActual > cw.totalKm ? 'over' : ''}" style="width:${pct}%"></div></div>
+      <div class="week-km"><span>${Math.round(cwActual)} km logged</span><span><strong>${pct}%</strong> of goal</span></div>
+      <div class="week-days">
+        <div class="day-pill day-row-label">&nbsp;</div>
+        ${DAY_LABELS.map(d => `<div class="day-pill day-label">${d}</div>`).join('')}
+        <div class="day-pill day-row-label">Plan</div>
+        ${cw.days.map(d => `<div class="day-pill ${getDayClass(d)}">${isNaN(parseFloat(d)) ? (String(d).toLowerCase()==='rest'||String(d)===''?'\u2014':d) : d+'km'}</div>`).join('')}
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="legend-swatch" style="background:#EAF3DE;border:0.5px solid #C0DD97;"></span>Ride</span>
+      <span><span class="legend-swatch" style="background:#E6F1FB;border:0.5px solid #B5D4F4;"></span>Core</span>
+      <span><span class="legend-swatch" style="background:#FAEEDA;border:0.5px solid #FAC775;"></span>Soccer</span>
+      <span><span class="legend-swatch" style="background:#f0f0ee;border:0.5px solid #ddd;"></span>Rest</span>
+    </div>`;
+}
+
+// ── Training plan ──
+function getActualKmForDay(weekIdx, dayIdx) {
+  const dayDate = addDays(PLAN[weekIdx].startDate, dayIdx);
+  return rides.filter(r => r.date === dayDate).reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
+}
+
+function renderPlan() {
+  const today = todayUTC();
+  const cwIdx = getCurrentWeekIndex();
+  document.getElementById('plan-weeks').innerHTML = PLAN.map((w, i) => {
+    const actual = getWeekActualKm(i);
+    const pct = Math.min(100, Math.round((actual / w.totalKm) * 100));
+    const isCurrent = i === cwIdx;
+    const isPast = parseUTC(w.startDate) < today && !isCurrent;
+    const pillsHtml = w.days.map((d, j) => {
+      const cls = getDayClass(d);
+      const label = isNaN(parseFloat(d)) ? (String(d).toLowerCase()==='rest'||String(d).toLowerCase()===''?'\u2014':d) : d+'km';
+      return `<div class="day-pill ${cls} editable" data-week="${i}" data-day="${j}" data-val="${d}" title="Click to change">${label}</div>`;
+    }).join('');
+    const actualPillsHtml = w.days.map((d, j) => {
+      const km = getActualKmForDay(i, j);
+      return km > 0 ? `<div class="day-pill day-actual">${Math.round(km*10)/10}km</div>` : `<div class="day-pill day-actual-empty"></div>`;
+    }).join('');
+    return `<div class="week-card ${isCurrent?'current-week':''}">
+      <div class="week-header">
+        <span class="week-title">Week ${w.week}${isCurrent?'<span class="badge badge-current">Current</span>':isPast?'<span class="badge badge-done">Done</span>':''}</span>
+        <span class="week-dates">${formatWeekDates(w.startDate)}</span>
+      </div>
+      <div class="week-progress"><div class="week-progress-fill ${actual>w.totalKm?'over':''}" style="width:${pct}%"></div></div>
+      <div class="week-km"><span>${Math.round(actual)} / ${Math.round(w.totalKm)} km logged</span><span><strong>${pct}%</strong></span></div>
+      <div class="week-days">
+        <div class="day-pill day-label">&nbsp;</div>
+        ${DAY_LABELS.map(d=>`<div class="day-pill day-label">${d}</div>`).join('')}
+        <div class="day-pill day-row-label">Plan</div>${pillsHtml}
+        <div class="day-pill day-row-label">Actual</div>${actualPillsHtml}
+      </div>
+    </div>`;
+  }).join('') + '<div class="edit-hint">Tip: click any plan day to change its activity or distance.</div>';
+
+  document.getElementById('plan-weeks').querySelectorAll('.day-pill.editable').forEach(pill => {
+    pill.addEventListener('click', e => { e.stopPropagation(); startEditDay(+pill.dataset.week, +pill.dataset.day, pill.dataset.val, pill); });
+  });
+}
+
+// ── Log a ride ──
+function logRide() {
+  const date   = document.getElementById('ride-date').value;
+  const km     = document.getElementById('ride-km').value;
+  const elev   = document.getElementById('ride-elev').value;
+  const effort = document.getElementById('ride-effort').value;
+  const notes  = document.getElementById('ride-notes').value;
+  if (!date || !km) { alert('Please enter a date and distance.'); return; }
+  rides.push({ date, km: parseFloat(km), elev: parseInt(elev)||0, effort: parseInt(effort), notes, id: Date.now() });
+  document.getElementById('ride-km').value = '';
+  document.getElementById('ride-elev').value = '';
+  document.getElementById('ride-notes').value = '';
+  document.getElementById('ride-effort').value = '3';
+  renderDashboard(); renderPlan(); renderRides();
+  scheduleSave();
+  showSection('rides');
+}
+
+function deleteRide(id) {
+  rides = rides.filter(r => r.id !== id);
+  renderDashboard(); renderPlan(); renderRides();
+  scheduleSave();
+}
+
+// ── My rides ──
+function renderRides() {
+  const container = document.getElementById('rides-container');
+  if (!rides.length) { container.innerHTML = '<div class="empty-state">No rides logged yet.</div>'; return; }
+  const sorted = [...rides].sort((a, b) => parseUTC(b.date) - parseUTC(a.date));
+  container.innerHTML = `<div class="ride-log">
+    <div class="ride-log-header"><span>Date</span><span>Notes</span><span>Distance</span><span>Elevation</span><span>Effort</span><span></span></div>
+    ${sorted.map(r => `<div class="ride-row" id="ride-row-${r.id}">
+      <span style="color:#888;font-size:12px;">${parseUTC(r.date).toLocaleDateString('en-CA',{month:'short',day:'numeric',timeZone:'UTC'})}</span>
+      <span style="font-size:12px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.notes||'\u2014'}</span>
+      <span style="font-weight:500;">${r.km} km</span>
+      <span style="color:#888;">${r.elev?r.elev+' m':'\u2014'}</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span class="effort-dot effort-${r.effort}"></span><span style="font-size:11px;color:#aaa;">${r.effort}/5</span></span>
+      <span style="display:flex;gap:4px;">
+        <button class="edit-btn" onclick="startEditRide(${r.id})">Edit</button>
+        <button class="delete-btn" onclick="deleteRide(${r.id})">x</button>
+      </span>
+    </div>`).join('')}
+  </div>`;
+}
+
+function startEditRide(id) {
+  const r = rides.find(x => x.id === id);
+  if (!r) return;
+  const row = document.getElementById(`ride-row-${id}`);
+  if (!row) return;
+  row.innerHTML = `
+    <span><input type="date" id="ed-date-${id}" value="${r.date}" style="font-size:11px;padding:4px 6px;width:100%;"></span>
+    <span><input type="text"   id="ed-notes-${id}" value="${r.notes||''}" placeholder="Notes" style="font-size:11px;padding:4px 6px;width:100%;"></span>
+    <span><input type="number" id="ed-km-${id}"    value="${r.km}"  min="0" step="0.1" style="font-size:11px;padding:4px 6px;width:100%;"></span>
+    <span><input type="number" id="ed-elev-${id}"  value="${r.elev||''}" min="0" placeholder="m" style="font-size:11px;padding:4px 6px;width:100%;"></span>
+    <span><select id="ed-eff-${id}" style="font-size:11px;padding:4px 6px;width:100%;">
+      ${[1,2,3,4,5].map(n=>`<option value="${n}"${r.effort==n?' selected':''}>${n}</option>`).join('')}
+    </select></span>
+    <span style="display:flex;gap:4px;">
+      <button class="save-btn" onclick="saveEditRide(${id})">Save</button>
+      <button class="delete-btn" onclick="renderRides()">x</button>
+    </span>`;
+  document.getElementById(`ed-km-${id}`).focus();
+}
+
+function saveEditRide(id) {
+  const idx = rides.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const date  = document.getElementById(`ed-date-${id}`).value;
+  const km    = parseFloat(document.getElementById(`ed-km-${id}`).value);
+  const elev  = parseInt(document.getElementById(`ed-elev-${id}`).value) || 0;
+  const effort= parseInt(document.getElementById(`ed-eff-${id}`).value);
+  const notes = document.getElementById(`ed-notes-${id}`).value;
+  if (!date || isNaN(km)) { alert('Please enter a valid date and distance.'); return; }
+  rides[idx] = { ...rides[idx], date, km, elev, effort, notes };
+  renderDashboard(); renderPlan(); renderRides();
+  scheduleSave();
+}
+
+// ── Routes ──
+function renderRoutes() {
+  const max = parseFloat(document.getElementById('route-filter').value);
+  document.getElementById('routes-container').innerHTML = ROUTES.filter(r=>r.km<=max).sort((a,b)=>a.km-b.km).map(r=>`
+    <div class="route-card">
+      <div class="route-km">${r.km} km</div>
+      <div class="route-info"><div class="route-name">${r.name}</div><div class="route-meta">${r.elev.toLocaleString()} m elevation &middot; ${Math.round(r.elev/r.km*10)/10} m/km</div></div>
+      <a class="route-link" href="${r.url}" target="_blank">Strava &#8599;</a>
+    </div>`).join('');
+}
+
+// ── Section switching ──
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('visible');
+  const labels = { dashboard:'Dashboard', plan:'Training plan', log:'Log a ride', rides:'My rides', routes:'Route library' };
+  document.querySelectorAll('.nav button').forEach(b => { if (b.textContent === labels[id]) b.classList.add('active'); });
+  if (id==='dashboard') renderDashboard();
+  if (id==='plan') renderPlan();
+  if (id==='rides') renderRides();
+  if (id==='routes') renderRoutes();
+}
+
+// ── Boot ──
+if (localStorage.getItem('tdv_authed') === '1') {
+  document.getElementById('gate-pw').style.display = 'none';
+  showSetupOrApp();
+}
+</script>
+</body>
+</html>
