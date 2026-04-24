@@ -633,7 +633,7 @@ function renderDashboard() {
   });
 
   const cw = PLAN[cwIdx];
-  const pct = Math.min(100, Math.round((cwActual / cw.totalKm) * 100));
+  const pct = cw.totalKm > 0 ? Math.min(100, Math.round((cwActual / cw.totalKm) * 100)) : 0;
   document.getElementById('dash-current-week').innerHTML = `
     <div class="section-title">This week (week ${cwIdx + 1})</div>
     <div class="week-card current-week">
@@ -666,7 +666,7 @@ function renderPlan() {
   const cwIdx = getCurrentWeekIndex();
   document.getElementById('plan-weeks').innerHTML = PLAN.map((w, i) => {
     const actual = getWeekActualKm(i);
-    const pct = Math.min(100, Math.round((actual / w.totalKm) * 100));
+    const pct = w.totalKm > 0 ? Math.min(100, Math.round((actual / w.totalKm) * 100)) : 0;
     const isCurrent = i === cwIdx;
     const isPast = parseUTC(w.startDate) < today && !isCurrent;
     const pillsHtml = w.days.map((d, j) => {
