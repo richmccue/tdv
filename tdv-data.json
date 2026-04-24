@@ -1,14 +1,6 @@
 {
   "rides": [
     {
-      "date": "2026-04-13",
-      "km": 13,
-      "elev": 120,
-      "effort": 2,
-      "notes": "Mountain Biking with Emily's friends in Reno. Justin & Luke.",
-      "id": 1777056656458
-    },
-    {
       "date": "2026-04-22",
       "km": 41,
       "elev": 180,
