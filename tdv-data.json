@@ -15,6 +15,14 @@
       "effort": 3,
       "notes": "Mountain Biking with Emily's friends Justin & Luke in Reno.",
       "id": 1777057841136
+    },
+    {
+      "date": "2026-04-23",
+      "km": 6.6,
+      "elev": 0,
+      "effort": 3,
+      "notes": "",
+      "id": 1777058815593
     }
   ],
   "planEdits": {
