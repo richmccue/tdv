@@ -7,6 +7,14 @@
       "effort": 3,
       "notes": "Rouvey training bike ride.",
       "id": 1777057664672
+    },
+    {
+      "date": "2026-04-13",
+      "km": 13,
+      "elev": 120,
+      "effort": 3,
+      "notes": "Mountain Biking with Emily's friends Justin & Luke in Reno.",
+      "id": 1777057841136
     }
   ],
   "planEdits": {
