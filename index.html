@@ -65,8 +65,10 @@
   .week-days { display: grid; grid-template-columns: 28px repeat(7, 1fr); gap: 4px; margin-top: 10px; }
   .day-pill { text-align: center; font-size: 10px; padding: 4px 2px; border-radius: 4px; }
   .day-row-label { font-size: 9px; font-weight: 500; color: #999; background: transparent; display: flex; align-items: center; justify-content: flex-end; padding-right: 2px; }
-  .day-actual { background: #e8f4d4; color: #3B6D11; font-weight: 500; }
-  .day-actual-empty { background: transparent; }
+  .day-actual { background: #e8f4d4; color: #3B6D11; font-weight: 500; cursor: pointer; text-decoration: underline dotted #3B6D11; }
+  .day-actual:hover { background: #C0DD97; }
+  .day-actual-empty { background: #f5f5f3; color: #ccc; cursor: pointer; border-radius: 4px; }
+  .day-actual-empty:hover { background: #e8f4d4; }
   .day-pill.ride { background: #EAF3DE; color: #27500A; }
   .day-pill.ride.editable { cursor: pointer; text-decoration: underline dotted #639922; }
   .day-pill.ride.editable:hover { background: #C0DD97; }
@@ -675,6 +677,65 @@ function getActualKmForDay(weekIdx, dayIdx) {
   return rides.filter(r => r.date === dayDate).reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
 }
 
+function startEditActualDay(weekIdx, dayIdx, pillEl) {
+  closePopup();
+  const dayDate = addDays(PLAN[weekIdx].startDate, dayIdx);
+  const existing = rides.filter(r => r.date === dayDate);
+  const currentKm = existing.reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
+
+  const popup = document.createElement('div');
+  popup.className = 'pill-popup';
+  activePopup = popup;
+
+  // km input row
+  const row = document.createElement('div'); row.className = 'km-row';
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.min = 0; inp.step = 0.1;
+  inp.value = currentKm > 0 ? currentKm : '';
+  inp.placeholder = 'km';
+  const btn = document.createElement('button'); btn.textContent = 'OK';
+  btn.onclick = e => {
+    e.stopPropagation();
+    const parsed = parseFloat(inp.value);
+    if (isNaN(parsed)) return;
+    // Remove existing rides for this day, add one consolidated entry
+    rides = rides.filter(r => r.date !== dayDate);
+    if (parsed > 0) {
+      rides.push({ date: dayDate, km: parsed, elev: 0, effort: 3, notes: '', id: Date.now() });
+    }
+    renderDashboard(); renderPlan(); renderRides();
+    scheduleSave();
+    closePopup();
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); btn.onclick(e); }
+    if (e.key === 'Escape') { closePopup(); renderPlan(); }
+  });
+  row.appendChild(inp); row.appendChild(btn);
+  popup.appendChild(row);
+
+  // Clear button if there's an existing entry
+  if (currentKm > 0) {
+    const clr = document.createElement('button');
+    clr.className = 'opt-rest'; clr.textContent = 'Clear';
+    clr.onclick = e => {
+      e.stopPropagation();
+      rides = rides.filter(r => r.date !== dayDate);
+      renderDashboard(); renderPlan(); renderRides();
+      scheduleSave();
+      closePopup();
+    };
+    popup.appendChild(clr);
+  }
+
+  pillEl.style.position = 'relative';
+  pillEl.appendChild(popup);
+  setTimeout(() => inp.focus(), 0);
+  setTimeout(() => {
+    document.addEventListener('click', function h(e) { if (!popup.contains(e.target)) { closePopup(); document.removeEventListener('click', h); } });
+  }, 0);
+}
+
 function renderPlan() {
   const today = todayUTC();
   const cwIdx = getCurrentWeekIndex();
@@ -690,7 +751,9 @@ function renderPlan() {
     }).join('');
     const actualPillsHtml = w.days.map((d, j) => {
       const km = getActualKmForDay(i, j);
-      return km > 0 ? `<div class="day-pill day-actual">${Math.round(km*10)/10}km</div>` : `<div class="day-pill day-actual-empty"></div>`;
+      const label = km > 0 ? `${Math.round(km*10)/10}km` : '+';
+      const cls = km > 0 ? 'day-actual' : 'day-actual-empty';
+      return `<div class="${cls}" data-aweek="${i}" data-aday="${j}" title="Click to edit actual km">${label}</div>`;
     }).join('');
     return `<div class="week-card ${isCurrent?'current-week':''}">
       <div class="week-header">
@@ -710,6 +773,9 @@ function renderPlan() {
 
   document.getElementById('plan-weeks').querySelectorAll('.day-pill.editable').forEach(pill => {
     pill.addEventListener('click', e => { e.stopPropagation(); startEditDay(+pill.dataset.week, +pill.dataset.day, pill.dataset.val, pill); });
+  });
+  document.getElementById('plan-weeks').querySelectorAll('.day-actual, .day-actual-empty').forEach(pill => {
+    pill.addEventListener('click', e => { e.stopPropagation(); startEditActualDay(+pill.dataset.aweek, +pill.dataset.aday, pill); });
   });
 }
 
