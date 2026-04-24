@@ -305,6 +305,10 @@ function todayUTC() {
   const n = new Date();
   return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
 }
+function localDateString() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
 
 // ── Training plan (base data, edits overlaid from remote) ──
 const PLAN_BASE = [
@@ -491,7 +495,7 @@ async function launchApp() {
   }
   PLAN = buildPlan();
   document.getElementById('app').style.display = 'block';
-  document.getElementById('ride-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ride-date').value = localDateString();
   updateCountdown();
   renderDashboard();
   window.addEventListener('scroll', () => {
@@ -531,9 +535,9 @@ function getCurrentWeekIndex() {
 
 function getWeekActualKm(weekIdx) {
   const w = PLAN[weekIdx];
-  const start = parseUTC(w.startDate);
-  const end = new Date(start); end.setUTCDate(end.getUTCDate() + 7);
-  return rides.filter(r => { const d = parseUTC(r.date); return d >= start && d < end; })
+  const startStr = w.startDate;
+  const endStr   = addDays(w.startDate, 7);
+  return rides.filter(r => r.date >= startStr && r.date < endStr)
               .reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
 }
 
