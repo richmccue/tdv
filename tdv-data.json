@@ -31,6 +31,14 @@
       "effort": 3,
       "notes": "Rouvey",
       "id": 1777308172439
+    },
+    {
+      "date": "2026-04-26",
+      "km": 34,
+      "elev": 90,
+      "effort": 3,
+      "notes": "Last Rouvey ride until fall.",
+      "id": 1777308200125
     }
   ],
   "planEdits": {
