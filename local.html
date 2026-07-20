@@ -13,18 +13,6 @@ input, select, textarea, button { font-family: inherit; font-size: 14px; border-
 input:focus, select:focus, textarea:focus { border-color: #639922; box-shadow: 0 0 0 2px rgba(99,153,34,0.15); }
 button { cursor: pointer; }
 
-/* ── Auth overlay ── */
-.overlay { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:2rem 1rem; }
-.auth-card { background:#fff; border:0.5px solid #ddd; border-radius:16px; padding:2rem; width:100%; max-width:400px; }
-.auth-card h2 { font-size:18px; font-weight:500; margin-bottom:4px; }
-.auth-card p { font-size:13px; color:#888; margin-bottom:1.5rem; line-height:1.5; }
-.auth-card label { display:block; font-size:12px; color:#666; margin-bottom:4px; margin-top:12px; }
-.auth-card input { width:100%; }
-.auth-card .btn-go { width:100%; margin-top:1rem; padding:10px; background:#3B6D11; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:500; }
-.auth-card .btn-go:hover { background:#27500A; }
-.auth-card .err { color:#A32D2D; font-size:12px; margin-top:8px; display:none; }
-.auth-card .err.show { display:block; }
-
 /* ── Sync status + backup row ── */
 .status-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:0.5rem; min-height:22px; }
 .sync-bar { font-size:11px; color:#aaa; text-align:right; }
@@ -171,20 +159,8 @@ body { padding: 1rem 0.75rem; }
 </head>
 <body>
 
-<!-- ── PASSWORD GATE ── -->
-<div class="overlay" id="gate-pw">
-<div class="auth-card">
-<h2>Tour De Victoria Trainer</h2>
-<p>Enter the app password to continue.</p>
-<label>Password</label>
-<input type="password" id="pw-input" placeholder="Password" autocomplete="current-password">
-<div class="err" id="pw-err">Incorrect password.</div>
-<button class="btn-go" onclick="checkPassword()">Continue</button>
-</div>
-</div>
-
 <!-- ── MAIN APP ── -->
-<div class="container" id="app" style="display:none;">
+<div class="container" id="app">
 <div class="sticky-header" id="sticky-header">
 <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px;">
 <span style="font-size:20px;font-weight:500;">Tour De Victoria Trainer</span>
@@ -265,12 +241,6 @@ body { padding: 1rem 0.75rem; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-// ─────────────────────────────────────────────
-// CONFIGURATION — edit this value
-// ─────────────────────────────────────────────
-const APP_PASSWORD_HASH = '820d64fbedbbf6b11872858fba1d07d552d631cc0717c2aa834795a47e5a9f81'; // SHA-256 of your password
-// ─────────────────────────────────────────────
-
 const WEEK1_START = '2026-04-06';
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -435,33 +405,12 @@ reader.readAsText(file);
 }
 
 // ─────────────────────────────────────────────
-// AUTH FLOW
+// APP LAUNCH
 // ─────────────────────────────────────────────
-async function hashString(str) {
-const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function checkPassword() {
-const val = document.getElementById('pw-input').value;
-const err = document.getElementById('pw-err');
-const hash = await hashString(val);
-if (hash === APP_PASSWORD_HASH) {
-document.getElementById('gate-pw').style.display = 'none';
-localStorage.setItem('tdv_authed', '1');
-launchApp();
-} else {
-err.classList.add('show');
-document.getElementById('pw-input').value = '';
-}
-}
-document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
-
 function launchApp() {
 const data = loadFromLocal();
 if (data) { rides = data.rides || []; planEdits = data.planEdits || {}; }
 PLAN = buildPlan();
-document.getElementById('app').style.display = 'block';
 document.getElementById('ride-date').value = localDateString();
 renderDashboard();
 window.addEventListener('scroll', () => {
@@ -810,10 +759,7 @@ if (id==='routes') renderRoutes();
 }
 
 // ── Boot ──
-if (localStorage.getItem('tdv_authed') === '1') {
-document.getElementById('gate-pw').style.display = 'none';
 launchApp();
-}
 </script>
 </body>
 </html>
