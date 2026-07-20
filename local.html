@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tour de Victoria 2026 — Training Tracker</title>
+<title>Tour De Victoria Trainer</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { overflow-x: hidden; }
@@ -144,8 +144,6 @@ button { cursor: pointer; }
 .filter-row select { width: auto; }
 
 /* ── Misc ── */
-.countdown { font-size: 13px; color: #888; margin-bottom: 1.5rem; }
-.countdown strong { font-size: 20px; color: #1a1a18; font-weight: 500; }
 .section-title { font-size: 13px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; margin-top: 1.5rem; }
 .chart-wrap { position: relative; width: 100%; height: 200px; margin-bottom: 1.5rem; }
 .legend { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; color: #888; }
@@ -176,7 +174,7 @@ body { padding: 1rem 0.75rem; }
 <!-- ── PASSWORD GATE ── -->
 <div class="overlay" id="gate-pw">
 <div class="auth-card">
-<h2>Tour de Victoria 2026</h2>
+<h2>Tour De Victoria Trainer</h2>
 <p>Enter the app password to continue.</p>
 <label>Password</label>
 <input type="password" id="pw-input" placeholder="Password" autocomplete="current-password">
@@ -188,11 +186,10 @@ body { padding: 1rem 0.75rem; }
 <!-- ── MAIN APP ── -->
 <div class="container" id="app" style="display:none;">
 <div class="sticky-header" id="sticky-header">
-<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px;">
-<span style="font-size:20px;font-weight:500;">Tour de Victoria 2026</span>
-<span style="font-size:13px;color:#888;">140 km &middot; Aug 10, 2026</span>
+<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:14px;">
+<span style="font-size:20px;font-weight:500;">Tour De Victoria Trainer</span>
+<span style="font-size:13px;color:#888;">140 km</span>
 </div>
-<div class="countdown" id="countdown"></div>
 <div class="nav">
 <button class="active" onclick="showSection('dashboard')">Dashboard</button>
 <button onclick="showSection('plan')">Training plan</button>
@@ -274,7 +271,6 @@ body { padding: 1rem 0.75rem; }
 const APP_PASSWORD_HASH = '820d64fbedbbf6b11872858fba1d07d552d631cc0717c2aa834795a47e5a9f81'; // SHA-256 of your password
 // ─────────────────────────────────────────────
 
-const RACE_DATE = new Date('2026-08-10');
 const WEEK1_START = '2026-04-06';
 const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -467,7 +463,6 @@ if (data) { rides = data.rides || []; planEdits = data.planEdits || {}; }
 PLAN = buildPlan();
 document.getElementById('app').style.display = 'block';
 document.getElementById('ride-date').value = localDateString();
-updateCountdown();
 renderDashboard();
 window.addEventListener('scroll', () => {
 const h = document.getElementById('sticky-header');
@@ -510,21 +505,6 @@ const startStr = w.startDate;
 const endStr = addDays(w.startDate, 7);
 return rides.filter(r => r.date >= startStr && r.date < endStr)
 .reduce((s, r) => s + (parseFloat(r.km) || 0), 0);
-}
-
-function updateCountdown() {
-const diff = Math.ceil((RACE_DATE - todayUTC()) / 86400000);
-const el = document.getElementById('countdown');
-if (diff > 0) el.innerHTML = `<strong>${diff}</strong> days to race day`;
-else if (diff === 0) el.innerHTML = '<strong>Race day!</strong> Good luck!';
-else el.innerHTML = `Race completed ${Math.abs(diff)} days ago`;
-}
-
-function formatWeekDates(startDate) {
-const s = parseUTC(startDate);
-const e = new Date(s); e.setUTCDate(e.getUTCDate() + 6);
-const fmt = d => d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-return `${fmt(s)} \u2013 ${fmt(e)}`;
 }
 
 // ── Plan editing popup ──
@@ -606,7 +586,7 @@ const pct = cw.totalKm > 0 ? Math.min(100, Math.round((cwActual / cw.totalKm) * 
 document.getElementById('dash-current-week').innerHTML = `
 <div class="section-title">This week (week ${cwIdx + 1})</div>
 <div class="week-card current-week">
-<div class="week-header"><span class="week-title">Week ${cwIdx + 1} &middot; ${formatWeekDates(cw.startDate)}</span><span style="font-size:12px;color:#888">Goal: ${Math.round(cw.totalKm)} km</span></div>
+<div class="week-header"><span class="week-title">Week ${cwIdx + 1}</span><span style="font-size:12px;color:#888">Goal: ${Math.round(cw.totalKm)} km</span></div>
 <div class="week-progress"><div class="week-progress-fill ${cwActual > cw.totalKm ? 'over' : ''}" style="width:${pct}%"></div></div>
 <div class="week-km"><span>${Math.round(cwActual)} km logged</span><span><strong>${pct}%</strong> of goal</span></div>
 <div class="week-days">
@@ -707,7 +687,6 @@ return `<div class="${cls}" data-aweek="${i}" data-aday="${j}" title="Click to e
 return `<div class="week-card ${isCurrent?'current-week':''}">
 <div class="week-header">
 <span class="week-title">Week ${w.week}${isCurrent?'<span class="badge badge-current">Current</span>':isPast?'<span class="badge badge-done">Done</span>':''}</span>
-<span class="week-dates">${formatWeekDates(w.startDate)}</span>
 </div>
 <div class="week-progress"><div class="week-progress-fill ${actual>w.totalKm?'over':''}" style="width:${pct}%"></div></div>
 <div class="week-km"><span>${Math.round(actual)} / ${Math.round(w.totalKm)} km logged</span><span><strong>${pct}%</strong></span></div>
